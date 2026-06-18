@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório de Conciliação — Catronis ERP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f5f6fa;
+    color: #2d3436;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  .steps {
+    display: flex; gap: 0; margin-bottom: 24px;
+    background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .step {
+    flex: 1; text-align: center; padding: 14px 10px;
+    font-size: 0.83em; color: #999; background: #fafafa;
+    font-weight: 500; position: relative;
+  }
+  .step.active { background: #e8f0fe; color: #20455B; font-weight: 700; }
+  .step.done { background: #e6f4ea; color: #1e7e34; }
+  .step::after {
+    content: ''; position: absolute; right: -10px; top: 50%;
+    transform: translateY(-50%); width: 0; height: 0;
+    border-top: 10px solid transparent; border-bottom: 10px solid transparent;
+    border-left: 10px solid #fafafa; z-index: 1;
+  }
+  .step.active::after { border-left-color: #e8f0fe; }
+  .step.done::after { border-left-color: #e6f4ea; }
+  .step:last-child::after { display: none; }
+
+  .header {
+    background: #fff; border-radius: 12px; padding: 20px 24px;
+    margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .header h1 { font-size: 1.35em; color: #20455B; margin-right: auto; }
+  .header .meta { font-size: 0.82em; color: #888; text-align: right; line-height: 1.6; }
+  .header .meta strong { color: #555; }
+
+  /* CARDS DE RESUMO */
+  .cards {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #fff; border-radius: 12px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center;
+    border-top: 4px solid #ddd;
+  }
+  .card .icon { font-size: 2em; margin-bottom: 8px; }
+  .card .num { font-size: 2em; font-weight: 700; }
+  .card .label { font-size: 0.82em; color: #888; margin-top: 4px; }
+  .card .sub { font-size: 0.78em; color: #aaa; }
+  .card.green  { border-top-color: #27ae60; } .card.green .num { color: #1e7e34; }
+  .card.yellow { border-top-color: #f0b400; } .card.yellow .num { color: #856404; }
+  .card.red    { border-top-color: #e74c3c; } .card.red .num { color: #c0392b; }
+  .card.blue   { border-top-color: #20455B; } .card.blue .num { color: #20455B; }
+
+  /* LISTAS */
+  .lists {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+    margin-bottom: 20px;
+  }
+  .list-panel {
+    background: #fff; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
+  }
+  .list-panel h2 {
+    padding: 12px 16px; font-size: 0.9em; font-weight: 700;
+    border-bottom: 1px solid #eee;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .list-panel.green h2  { background: #e6f4ea; color: #1e7e34; }
+  .list-panel.yellow h2 { background: #fffbe6; color: #856404; }
+  .list-panel.red h2    { background: #fde8e8; color: #c0392b; }
+  .list-panel .badge-count {
+    font-size: 0.8em; padding: 2px 10px;
+    border-radius: 20px; background: #fff; font-weight: 600;
+  }
+  .list-item {
+    padding: 10px 16px; border-bottom: 1px solid #f5f5f5;
+    font-size: 0.82em; display: flex; justify-content: space-between; align-items: center;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-item .desc { flex: 1; min-width: 0; }
+  .list-item .nome { font-weight: 600; }
+  .list-item .info { font-size: 0.85em; color: #888; }
+  .list-item .val { font-weight: 700; margin-left: 8px; white-space: nowrap; }
+  .val.credit { color: #1e7e34; }
+  .val.debit  { color: #c0392b; }
+  .icon-sm { font-size: 0.8em; margin-right: 4px; }
+
+  /* DIVERGÊNCIAS */
+  .list-item.diverg {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .diverg-row {
+    display: flex; justify-content: space-between; font-size: 0.9em;
+  }
+  .diverg-detail {
+    font-size: 0.8em; color: #888; padding-left: 4px;
+  }
+
+  /* TOTAIS */
+  .totals {
+    background: #fff; border-radius: 12px; padding: 16px 24px;
+    margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex; gap: 40px; flex-wrap: wrap;
+  }
+  .total-group { flex: 1; min-width: 200px; }
+  .total-group h3 { font-size: 0.85em; color: #888; margin-bottom: 8px; }
+  .total-row {
+    display: flex; justify-content: space-between;
+    padding: 4px 0; font-size: 0.85em;
+  }
+  .total-row.total { font-weight: 700; border-top: 1px solid #eee; margin-top: 6px; padding-top: 8px; font-size: 0.95em; }
+  .saldo-positivo { color: #1e7e34; font-weight: 700; }
+  .saldo-negativo { color: #c0392b; font-weight: 700; }
+
+  /* AÇÕES */
+  .actions {
+    background: #fff; border-radius: 12px; padding: 16px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .btn {
+    padding: 10px 22px; border: none; border-radius: 8px;
+    cursor: pointer; font-weight: 600; font-size: 0.9em; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: #20455B; color: white; }
+  .btn-primary:hover { background: #1a3748; }
+  .btn-success { background: #1e7e34; color: white; }
+  .btn-success:hover { background: #166b2a; }
+  .btn-outline { background: #fff; color: #20455B; border: 2px solid #20455B; }
+  .btn-outline:hover { background: #f0f4f8; }
+  .btn-light { background: #f8f9fa; color: #555; border: 1px solid #ddd; }
+  .btn-light:hover { background: #eee; }
+  .btn:disabled { background: #ccc; color: #999; cursor: not-allowed; border-color: #ccc; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #20455B; color: white; padding: 12px 24px;
+    border-radius: 8px; font-weight: 600; opacity: 0;
+    transition: opacity 0.3s; z-index: 999;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 900px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .lists { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="steps">
+  <div class="step done">1. Conta</div>
+  <div class="step done">2. Importar</div>
+  <div class="step done">3. Revisar</div>
+  <div class="step done">4. Conciliação</div>
+  <div class="step active">5. Relatório</div>
+</div>
+
+<div class="header">
+  <h1>📊 Relatório de Conciliação Bancária</h1>
+  <div class="meta">
+    <strong>Conta:</strong> Bradesco — C/C 237-2<br>
+    <strong>Período:</strong> 01/06/2026 a 16/06/2026<br>
+    <strong>Gerado em:</strong> 18/06/2026 às 10:45
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card green">
+    <div class="icon">✅</div>
+    <div class="num">8</div>
+    <div class="label">Lançamentos Conciliados</div>
+    <div class="sub">R$ 48.930,50</div>
+  </div>
+  <div class="card yellow">
+    <div class="icon">⚠️</div>
+    <div class="num">5</div>
+    <div class="label">Pendentes de Conciliação</div>
+    <div class="sub">R$ 4.497,45</div>
+  </div>
+  <div class="card red">
+    <div class="icon">❌</div>
+    <div class="num">2</div>
+    <div class="label">Divergências Encontradas</div>
+    <div class="sub">R$ 250,00 de diferença</div>
+  </div>
+  <div class="card blue">
+    <div class="icon">📋</div>
+    <div class="num">15</div>
+    <div class="label">Total de Lançamentos</div>
+    <div class="sub">12 importados + 3 já no ERP</div>
+  </div>
+</div>
+
+<div class="lists">
+  <!-- CONCILIADOS -->
+  <div class="list-panel green">
+    <h2>
+      ✅ Conciliados
+      <span class="badge-count">8</span>
+    </h2>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Fornecedor Ambev — NF 45231</div>
+        <div class="info">05/06 • TED AMBEV CERV</div>
+      </div>
+      <div class="val debit">-R$ 15.000,00</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Aluguel — Imobiliária Central</div>
+        <div class="info">08/06 • PIX IMOBILIARIA CENTRAL</div>
+      </div>
+      <div class="val debit">-R$ 3.200,50</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Fornecedor JBS — NF 98102</div>
+        <div class="info">12/06 • TED JBS FRIGORIFICOS</div>
+      </div>
+      <div class="val debit">-R$ 12.500,00</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Energia Elétrica — CPFL</div>
+        <div class="info">14/06 • DÉBITO AUTOMÁTICO ENERGIA</div>
+      </div>
+      <div class="val debit">-R$ 1.890,00</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Fornecedor Pepsico — NF 67234</div>
+        <div class="info">15/06 • TED FORNECEDOR PEPSICO</div>
+      </div>
+      <div class="val debit">-R$ 4.600,00</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Distribuidora ABC — NF 33421</div>
+        <div class="info">16/06 • PIX RECEBIDO DISTRIBUIDORA ABC</div>
+      </div>
+      <div class="val credit">+R$ 2.340,00</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Saldo Anterior</div>
+        <div class="info">01/06 • SALDO ANTERIOR</div>
+      </div>
+      <div class="val credit">+R$ 45.230,00</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Depósito — Cliente Varejão XYZ</div>
+        <div class="info">07/06 • DEP CLIENTE VAREJAO XYZ</div>
+      </div>
+      <div class="val credit">+R$ 2.500,00</div>
+    </div>
+  </div>
+
+  <!-- PENDENTES -->
+  <div class="list-panel yellow">
+    <h2>
+      ⚠️ Pendentes
+      <span class="badge-count">5</span>
+    </h2>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Cliente Supermercado Legal</div>
+        <div class="info">ERP 10/06 (+R$ 8.750) vs Banco 11/06 (+R$ 8.700)</div>
+      </div>
+      <div class="val debit" style="color:#856404;">dif. R$ 50</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Tarifa Bancária</div>
+        <div class="info">ERP 15/06 (-R$ 450) vs Banco 14/06 (-R$ 199)</div>
+      </div>
+      <div class="val debit" style="color:#856404;">dif. R$ 251</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Material Limpeza</div>
+        <div class="info">ERP 10/06 • Sem correspondente no banco</div>
+      </div>
+      <div class="val debit">-R$ 185,30</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Restituição ICMS</div>
+        <div class="info">ERP 13/06 • Sem correspondente no banco</div>
+      </div>
+      <div class="val credit">+R$ 1.420,00</div>
+    </div>
+    <div class="list-item">
+      <div class="desc">
+        <div class="nome">Correios</div>
+        <div class="info">ERP 16/06 • Sem correspondente no banco</div>
+      </div>
+      <div class="val debit">-R$ 72,15</div>
+    </div>
+  </div>
+
+  <!-- DIVERGÊNCIAS -->
+  <div class="list-panel red">
+    <h2>
+      ❌ Divergências
+      <span class="badge-count">2</span>
+    </h2>
+    <div class="list-item diverg">
+      <div class="diverg-row">
+        <span><strong>Supermercado Legal</strong></span>
+        <span class="val debit" style="color:#856404;">dif. R$ 50,00</span>
+      </div>
+      <div class="diverg-detail">
+        ERP: +R$ 8.750,00 (10/06) &nbsp;|&nbsp; Banco: +R$ 8.700,00 (11/06)<br>
+        ⚠️ Valor diferente em R$ 50,00 — possível taxa ou desconto não registrado
+      </div>
+    </div>
+    <div class="list-item diverg">
+      <div class="diverg-row">
+        <span><strong>Tarifa Bancária</strong></span>
+        <span class="val debit" style="color:#856404;">dif. R$ 200,00</span>
+      </div>
+      <div class="diverg-detail">
+        ERP: -R$ 450,90 (15/06) &nbsp;|&nbsp; Banco: -R$ 199,90 (14/06)<br>
+        ⚠️ Valor ERP é maior que o cobrado — possível pacote com serviços adicionais
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOTAIS -->
+<div class="totals">
+  <div class="total-group">
+    <h3>📋 Resumo ERP</h3>
+    <div class="total-row"><span>Total Créditos</span><span class="saldo-positivo">+R$ 60.440,00</span></div>
+    <div class="total-row"><span>Total Débitos</span><span class="saldo-negativo">-R$ 37.897,95</span></div>
+    <div class="total-row total"><span>Saldo ERP</span><span class="saldo-positivo">+R$ 22.542,05</span></div>
+  </div>
+  <div class="total-group">
+    <h3>🏦 Resumo Extrato</h3>
+    <div class="total-row"><span>Total Créditos</span><span class="saldo-positivo">+R$ 60.290,00</span></div>
+    <div class="total-row"><span>Total Débitos</span><span class="saldo-negativo">-R$ 37.840,80</span></div>
+    <div class="total-row total"><span>Saldo Extrato</span><span class="saldo-positivo">+R$ 22.449,20</span></div>
+  </div>
+  <div class="total-group">
+    <h3>📊 Conciliação</h3>
+    <div class="total-row"><span>Conciliados</span><span>8 itens — R$ 48.930,50</span></div>
+    <div class="total-row"><span>Pendentes</span><span>5 itens — R$ 4.497,45</span></div>
+    <div class="total-row"><span>Divergências</span><span>2 itens — R$ 250,00</span></div>
+    <div class="total-row total"><span>Diferença ERP × Banco</span><span style="color:#856404;font-weight:700;">R$ 92,85</span></div>
+  </div>
+</div>
+
+<div class="actions">
+  <div></div>
+  <div style="display:flex;gap:10px;">
+    <button class="btn btn-light" onclick="showToast('🖨 Enviando para impressora...')">🖨 Imprimir</button>
+    <button class="btn btn-primary" onclick="showToast('📤 Relatório enviado por e-mail!')">📤 Enviar por E-mail</button>
+    <button class="btn btn-success" onclick="showToast('📥 PDF gerado com sucesso!')">📥 Exportar PDF</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+</script>
+
+</body>
+</html>
