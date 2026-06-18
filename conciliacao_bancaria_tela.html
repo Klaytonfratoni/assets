@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conciliação Bancária — Catronis ERP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f5f6fa;
+    color: #2d3436;
+    padding: 20px;
+  }
+  .header {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .header h1 {
+    font-size: 1.3em;
+    color: #20455B;
+    margin-right: auto;
+  }
+  .header label {
+    font-size: 0.85em;
+    color: #666;
+    font-weight: 600;
+  }
+  .header select, .header input[type="date"] {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.85em;
+    background: #fff;
+  }
+  .header button {
+    padding: 8px 18px;
+    background: #20455B;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+  }
+  .header button:hover { background: #1a3748; }
+  .main {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .panel-header {
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 0.95em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-erp .panel-header {
+    background: #e8f0fe;
+    color: #20455B;
+    border-bottom: 2px solid #20455B;
+  }
+  .panel-banco .panel-header {
+    background: #e6f4ea;
+    color: #1e7e34;
+    border-bottom: 2px solid #1e7e34;
+  }
+  .badge {
+    background: #fff;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: 600;
+  }
+  .panel-erp .badge { color: #20455B; }
+  .panel-banco .badge { color: #1e7e34; }
+  .panel-search {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+  }
+  .panel-search input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 0.82em;
+    background: #fafafa;
+  }
+  .panel-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 520px;
+  }
+  .panel-list table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82em;
+  }
+  .panel-list th {
+    background: #f8f9fa;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .panel-list td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .panel-list tr:hover td {
+    background: #f0f4ff;
+  }
+  .panel-list tr.selected td {
+    background: #d5e5ff !important;
+  }
+  .panel-list tr.matched td {
+    background: #d5f5e3 !important;
+  }
+  .panel-list tr.suggested td {
+    background: #fffbe6 !important;
+    border-left: 3px solid #f0b400;
+  }
+  .credit { color: #1e7e34; font-weight: 600; }
+  .debit  { color: #c0392b; font-weight: 600; }
+  .status-pending { display: inline-block; width: 8px; height: 8px; background: #f39c12; border-radius: 50%; margin-right: 5px; }
+  .status-linked  { display: inline-block; width: 8px; height: 8px; background: #27ae60; border-radius: 50%; margin-right: 5px; }
+  .center-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px 14px;
+    background: #fafafa;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
+    min-width: 100px;
+  }
+  .center-bar button {
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.82em;
+  }
+  .btn-vincular {
+    background: #29B6F6;
+    color: white;
+  }
+  .btn-vincular:hover { background: #039BE5; }
+  .btn-vincular:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-desfazer {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  .btn-desfazer:hover { background: #f1c0c4; }
+  .btn-desfazer:disabled { background: #f5f5f5; color: #ccc; cursor: not-allowed; }
+  .btn-sugerir {
+    background: #fff3cd;
+    color: #856404;
+    font-size: 0.78em;
+  }
+  .btn-sugerir:hover { background: #ffeaa7; }
+  .match-info {
+    font-size: 0.75em;
+    text-align: center;
+    color: #888;
+    padding: 6px;
+  }
+  .match-info strong { color: #20455B; }
+  .footer {
+    margin-top: 16px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85em;
+    color: #666;
+  }
+  .footer strong { color: #20455B; }
+  .checkbox-custom {
+    width: 16px; height: 16px;
+    cursor: pointer;
+    accent-color: #20455B;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔗 Conciliação Bancária</h1>
+  <label>Conta:</label>
+  <select>
+    <option>Bradesco — C/C 237-2 (Principal)</option>
+    <option>Itaú — C/C 341-5</option>
+    <option>Santander — C/C 033-8</option>
+  </select>
+  <label>De:</label>
+  <input type="date" value="2026-06-01">
+  <label>Até:</label>
+  <input type="date" value="2026-06-18">
+  <button onclick="alert('Filtros aplicados!')">🔍 Buscar</button>
+</div>
+
+<div class="main">
+  <!-- PAINEL ERP (ESQUERDO) -->
+  <div class="panel panel-erp">
+    <div class="panel-header">
+      📋 Lançamentos no ERP
+      <span class="badge">5 pendentes</span>
+    </div>
+    <div class="panel-search">
+      <input type="text" placeholder="🔎 Filtrar por descrição ou valor..." oninput="filterTable(this, 'erp-table')">
+    </div>
+    <div class="panel-list">
+      <table id="erp-table">
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th style="text-align:right">Valor (R$)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-id="erp1" data-valor="15000.00" onclick="toggleRow(this, 'erp')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'erp')"></td>
+            <td>05/06</td>
+            <td>Fornecedor Ambev — NF 45231</td>
+            <td>Pagar</td>
+            <td class="debit" style="text-align:right">-15.000,00</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="erp2" data-valor="3200.50" onclick="toggleRow(this, 'erp')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'erp')"></td>
+            <td>08/06</td>
+            <td>Aluguel — Imobiliária Central</td>
+            <td>Pagar</td>
+            <td class="debit" style="text-align:right">-3.200,50</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="erp3" data-valor="8750.00" onclick="toggleRow(this, 'erp')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'erp')"></td>
+            <td>10/06</td>
+            <td>Cliente Supermercado Legal — Venda 5821</td>
+            <td>Receber</td>
+            <td class="credit" style="text-align:right">+8.750,00</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="erp4" data-valor="12500.00" onclick="toggleRow(this, 'erp')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'erp')"></td>
+            <td>12/06</td>
+            <td>Fornecedor JBS — NF 98102</td>
+            <td>Pagar</td>
+            <td class="debit" style="text-align:right">-12.500,00</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="erp5" data-valor="450.90" onclick="toggleRow(this, 'erp')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'erp')"></td>
+            <td>15/06</td>
+            <td>Tarifa Bancária — Pacote de Serviços</td>
+            <td>Pagar</td>
+            <td class="debit" style="text-align:right">-450,90</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BARRA CENTRAL -->
+  <div class="center-bar" id="center-bar">
+    <div class="match-info">
+      <span id="sel-erp-count">0</span> ERP × <span id="sel-banco-count">0</span> Banco
+    </div>
+    <button class="btn-vincular" id="btn-vincular" disabled onclick="vincular()">🔗 Vincular</button>
+    <button class="btn-desfazer" id="btn-desfazer" disabled onclick="desfazer()">↩ Desfazer</button>
+    <button class="btn-sugerir" onclick="sugerirMatches()">💡 Sugerir matches</button>
+  </div>
+
+  <!-- PAINEL BANCO (DIREITO) -->
+  <div class="panel panel-banco">
+    <div class="panel-header">
+      🏦 Extrato Bancário
+      <span class="badge">6 pendentes</span>
+    </div>
+    <div class="panel-search">
+      <input type="text" placeholder="🔎 Filtrar por descrição ou valor..." oninput="filterTable(this, 'banco-table')">
+    </div>
+    <div class="panel-list">
+      <table id="banco-table">
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th style="text-align:right">Valor (R$)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-id="b1" data-valor="15000.00" onclick="toggleRow(this, 'banco')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'banco')"></td>
+            <td>05/06</td>
+            <td>TED — AMBEV CERV</td>
+            <td>Débito</td>
+            <td class="debit" style="text-align:right">-15.000,00</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="b2" data-valor="3200.50" onclick="toggleRow(this, 'erp')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="toggleRow(this, 'erp')"></td>
+            <td>08/06</td>
+            <td>PIX — Imobiliária Central Ltda</td>
+            <td>Débito</td>
+            <td class="debit" style="text-align:right">-3.200,50</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="b3" data-valor="8700.00" onclick="toggleRow(this, 'banco')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'banco')"></td>
+            <td>11/06</td>
+            <td>DEPÓSITO — SUPERMERCADO LEGAL</td>
+            <td>Crédito</td>
+            <td class="credit" style="text-align:right">+8.700,00</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="b4" data-valor="12500.00" onclick="toggleRow(this, 'banco')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'banco')"></td>
+            <td>12/06</td>
+            <td>TED — JBS FRIGORIFICOS</td>
+            <td>Débito</td>
+            <td class="debit" style="text-align:right">-12.500,00</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="b5" data-valor="199.90" onclick="toggleRow(this, 'banco')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'banco')"></td>
+            <td>14/06</td>
+            <td>TARIFA BANCÁRIA — COBRANÇA</td>
+            <td>Débito</td>
+            <td class="debit" style="text-align:right">-199,90</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+          <tr data-id="b6" data-valor="2340.00" onclick="toggleRow(this, 'banco')">
+            <td><input type="checkbox" class="checkbox-custom" onclick="event.stopPropagation(); toggleRow(this.closest('tr'), 'banco')"></td>
+            <td>16/06</td>
+            <td>PIX RECEBIDO — DISTRIBUIDORA ABC</td>
+            <td>Crédito</td>
+            <td class="credit" style="text-align:right">+2.340,00</td>
+            <td><span class="status-pending"></span>Pendente</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <div>
+    <strong>3</strong> vinculados · 
+    <strong>5</strong> pendentes ERP · 
+    <strong>6</strong> pendentes banco
+  </div>
+  <div>Saldo ERP: <strong style="color:#c0392b">-R$ 22.400,40</strong> &nbsp;|&nbsp; Saldo Extrato: <strong style="color:#c0392b">-R$ 19.260,40</strong></div>
+</div>
+
+<script>
+let selectedErp = null;
+let selectedBanco = null;
+const links = new Map(); // erpRowId -> bancoRowId
+
+function toggleRow(row, side) {
+  if (row.classList.contains('matched')) return;
+  
+  // Deselect previous on same side
+  if (side === 'erp') {
+    document.querySelectorAll('#erp-table tr.selected').forEach(r => r.classList.remove('selected'));
+    if (selectedErp === row) { selectedErp = null; updateButtons(); return; }
+    selectedErp = row;
+    row.classList.add('selected');
+  } else {
+    document.querySelectorAll('#banco-table tr.selected').forEach(r => r.classList.remove('selected'));
+    if (selectedBanco === row) { selectedBanco = null; updateButtons(); return; }
+    selectedBanco = row;
+    row.classList.add('selected');
+  }
+  updateButtons();
+}
+
+function updateButtons() {
+  document.getElementById('sel-erp-count').textContent = selectedErp ? '1' : '0';
+  document.getElementById('sel-banco-count').textContent = selectedBanco ? '1' : '0';
+  document.getElementById('btn-vincular').disabled = !(selectedErp && selectedBanco);
+}
+
+function vincular() {
+  if (!selectedErp || !selectedBanco) return;
+  
+  // Visually mark as matched
+  [selectedErp, selectedBanco].forEach(r => {
+    r.classList.remove('selected');
+    r.classList.add('matched');
+    r.querySelector('input[type="checkbox"]').checked = false;
+    const statusCell = r.querySelector('td:last-child');
+    statusCell.innerHTML = '<span class="status-linked"></span>✅ Vinculado';
+  });
+  
+  links.set(selectedErp.dataset.id, selectedBanco.dataset.id);
+  selectedErp = null;
+  selectedBanco = null;
+  updateButtons();
+  document.getElementById('btn-desfazer').disabled = false;
+  updateCounters();
+}
+
+function desfazer() {
+  const lastErp = [...links.keys()].pop();
+  if (!lastErp) return;
+  const lastBanco = links.get(lastErp);
+  links.delete(lastErp);
+  
+  const erpRow = document.querySelector(`#erp-table tr[data-id="${lastErp}"]`);
+  const bancoRow = document.querySelector(`#banco-table tr[data-id="${lastBanco}"]`);
+  
+  [erpRow, bancoRow].forEach(r => {
+    if (r) {
+      r.classList.remove('matched');
+      const statusCell = r.querySelector('td:last-child');
+      statusCell.innerHTML = '<span class="status-pending"></span>Pendente';
+    }
+  });
+  
+  if (links.size === 0) document.getElementById('btn-desfazer').disabled = true;
+  updateCounters();
+}
+
+function sugerirMatches() {
+  // Clear old suggestions
+  document.querySelectorAll('tr.suggested').forEach(r => r.classList.remove('suggested'));
+  
+  // Find exact value matches between ERP and banco
+  const erpRows = [...document.querySelectorAll('#erp-table tbody tr')].filter(r => !r.classList.contains('matched'));
+  const bancoRows = [...document.querySelectorAll('#banco-table tbody tr')].filter(r => !r.classList.contains('matched'));
+  
+  let found = 0;
+  erpRows.forEach(erp => {
+    const valor = parseFloat(erp.dataset.valor);
+    bancoRows.forEach(b => {
+      if (Math.abs(parseFloat(b.dataset.valor) - valor) < 0.01) {
+        erp.classList.add('suggested');
+        b.classList.add('suggested');
+        found++;
+      }
+    });
+  });
+  
+  if (found === 0) alert('Nenhum match exato encontrado entre os pendentes.');
+}
+
+function filterTable(input, tableId) {
+  const filter = input.value.toLowerCase();
+  const rows = document.querySelectorAll(`#${tableId} tbody tr`);
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(filter) ? '' : 'none';
+  });
+}
+
+function updateCounters() {
+  const erpPending = document.querySelectorAll('#erp-table tbody tr:not(.matched)').length;
+  const bancoPending = document.querySelectorAll('#banco-table tbody tr:not(.matched)').length;
+  document.querySelector('.panel-erp .badge').textContent = erpPending + ' pendentes';
+  document.querySelector('.panel-banco .badge').textContent = bancoPending + ' pendentes';
+}
+
+// Initial state
+document.getElementById('btn-desfazer').disabled = true;
+</script>
+
+</body>
+</html>
