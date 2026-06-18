@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conciliação Automática — Catronis ERP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f5f6fa;
+    color: #2d3436;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  .steps {
+    display: flex; gap: 0; margin-bottom: 24px;
+    background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .step {
+    flex: 1; text-align: center; padding: 14px 10px;
+    font-size: 0.85em; color: #999; background: #fafafa;
+    font-weight: 500; position: relative;
+  }
+  .step.active { background: #e8f0fe; color: #20455B; font-weight: 700; }
+  .step.done { background: #e6f4ea; color: #1e7e34; }
+  .step::after {
+    content: ''; position: absolute; right: -10px; top: 50%;
+    transform: translateY(-50%); width: 0; height: 0;
+    border-top: 10px solid transparent; border-bottom: 10px solid transparent;
+    border-left: 10px solid #fafafa; z-index: 1;
+  }
+  .step.active::after { border-left-color: #e8f0fe; }
+  .step.done::after { border-left-color: #e6f4ea; }
+  .step:last-child::after { display: none; }
+
+  .header {
+    background: #fff; border-radius: 12px; padding: 18px 24px;
+    margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .header h1 { font-size: 1.35em; color: #20455B; margin-right: auto; }
+
+  /* RESUMO */
+  .summary-bar {
+    background: #fff; border-radius: 12px; padding: 16px 20px;
+    margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+  }
+  .summary-card {
+    flex: 1; min-width: 120px; text-align: center;
+    padding: 14px; border-radius: 10px; background: #f8f9fa;
+  }
+  .summary-card .num { font-size: 1.8em; font-weight: 700; }
+  .summary-card .label { font-size: 0.8em; color: #888; margin-top: 4px; }
+  .summary-card.green  { background: #e6f4ea; } .summary-card.green .num { color: #1e7e34; }
+  .summary-card.yellow { background: #fffbe6; } .summary-card.yellow .num { color: #856404; }
+  .summary-card.red    { background: #fde8e8; } .summary-card.red .num { color: #c0392b; }
+  .summary-card.blue   { background: #e8f0fe; } .summary-card.blue .num { color: #20455B; }
+  .summary-card.gray   { background: #f0f0f0; } .summary-card.gray .num { color: #888; }
+
+  .progress-wrap {
+    flex: 2; min-width: 200px;
+  }
+  .progress-label {
+    font-size: 0.85em; color: #555; margin-bottom: 6px;
+    display: flex; justify-content: space-between;
+  }
+  .progress-bar {
+    height: 8px; background: #eee; border-radius: 4px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, #1e7e34, #29B6F6);
+    border-radius: 4px; transition: width 0.5s;
+  }
+
+  /* LISTA DE MATCHES */
+  .matches-section {
+    background: #fff; border-radius: 12px; padding: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .matches-section h2 {
+    padding: 14px 20px; background: #f8f9fa;
+    font-size: 1em; color: #555; border-bottom: 1px solid #eee;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .toggle-all { font-size: 0.85em; color: #20455B; cursor: pointer; }
+  .toggle-all:hover { text-decoration: underline; }
+
+  .match-card {
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.3s;
+  }
+  .match-card.confirmed { opacity: 0.5; pointer-events: none; }
+  .match-card.confirmed .match-inner { background: #e6f4ea; }
+  .match-card.skipped { opacity: 0.3; pointer-events: none; }
+  .match-card.skipped .match-inner { background: #fafafa; text-decoration: line-through; }
+  .match-inner {
+    padding: 16px 20px; display: flex; align-items: center;
+    gap: 16px; flex-wrap: wrap;
+  }
+
+  .confidence {
+    min-width: 60px; text-align: center;
+    font-weight: 700; font-size: 1.1em;
+    padding: 8px 12px; border-radius: 8px;
+  }
+  .confidence.high { background: #e6f4ea; color: #1e7e34; }
+  .confidence.medium { background: #fffbe6; color: #856404; }
+  .confidence.low { background: #fde8e8; color: #c0392b; }
+
+  .match-details { flex: 1; min-width: 200px; }
+  .match-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 0; font-size: 0.88em;
+  }
+  .match-row .side-label {
+    font-size: 0.7em; font-weight: 700; padding: 2px 6px;
+    border-radius: 4px; min-width: 36px; text-align: center;
+  }
+  .side-label.erp { background: #e8f0fe; color: #20455B; }
+  .side-label.banco { background: #e6f4ea; color: #1e7e34; }
+  .match-desc { font-weight: 600; }
+  .match-date { color: #888; font-size: 0.82em; margin-left: 6px; }
+  .match-valor { font-weight: 700; margin-left: auto; }
+  .match-valor.pos { color: #1e7e34; }
+  .match-valor.neg { color: #c0392b; }
+
+  .match-reason {
+    font-size: 0.78em; color: #888; margin-top: 6px;
+    padding-left: 4px;
+  }
+  .match-reason span { margin-right: 12px; }
+  .match-reason .true { color: #1e7e34; }
+  .match-reason .false { color: #c0392b; }
+
+  .match-actions {
+    display: flex; flex-direction: column; gap: 6px; min-width: 100px;
+  }
+  .btn-sm {
+    padding: 8px 16px; border: none; border-radius: 6px;
+    cursor: pointer; font-weight: 600; font-size: 0.82em;
+    transition: all 0.2s;
+  }
+  .btn-confirm { background: #1e7e34; color: white; }
+  .btn-confirm:hover { background: #166b2a; }
+  .btn-skip { background: #f8d7da; color: #721c24; }
+  .btn-skip:hover { background: #f1c0c4; }
+
+  .match-icon {
+    font-size: 1.4em; width: 32px; text-align: center;
+  }
+
+  /* AÇÕES FINAIS */
+  .actions {
+    background: #fff; border-radius: 12px; padding: 16px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .actions .stats { font-size: 0.9em; color: #666; }
+  .actions .stats strong { color: #20455B; }
+  .actions .buttons { display: flex; gap: 10px; }
+  .btn {
+    padding: 10px 22px; border: none; border-radius: 8px;
+    cursor: pointer; font-weight: 600; font-size: 0.9em; transition: all 0.2s;
+  }
+  .btn-primary { background: #20455B; color: white; }
+  .btn-primary:hover { background: #1a3748; }
+  .btn-success { background: #1e7e34; color: white; }
+  .btn-success:hover { background: #166b2a; }
+  .btn-outline { background: #fff; color: #20455B; border: 2px solid #20455B; }
+  .btn-outline:hover { background: #f0f4f8; }
+  .btn-danger { background: #f8d7da; color: #721c24; }
+  .btn-danger:hover { background: #f1c0c4; }
+  .btn:disabled { background: #ccc; color: #999; cursor: not-allowed; border-color: #ccc; }
+
+  /* RESTANTES (não deram match) */
+  .unmatched-section {
+    background: #fff; border-radius: 12px; padding: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .unmatched-section h2 {
+    padding: 14px 20px; background: #fff3cd;
+    font-size: 1em; color: #856404; border-bottom: 1px solid #ffeaa7;
+  }
+  .unmatched-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  }
+  .unmatched-col {
+    padding: 14px 16px;
+  }
+  .unmatched-col:first-child { border-right: 1px solid #eee; }
+  .unmatched-col h3 { font-size: 0.85em; color: #555; margin-bottom: 8px; }
+  .unmatched-item {
+    padding: 8px 10px; font-size: 0.82em;
+    border-bottom: 1px solid #f5f5f5;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .unmatched-item:last-child { border-bottom: none; }
+  .unmatched-item .val { font-weight: 700; }
+  .unmatched-item .val.credit { color: #1e7e34; }
+  .unmatched-item .val.debit { color: #c0392b; }
+</style>
+</head>
+<body>
+
+<!-- PASSOS -->
+<div class="steps">
+  <div class="step done">1. Conta</div>
+  <div class="step done">2. Importar</div>
+  <div class="step done">3. Revisar</div>
+  <div class="step active">4. Conciliação Automática</div>
+</div>
+
+<!-- CABEÇALHO -->
+<div class="header">
+  <h1>🤖 Conciliação Automática</h1>
+  <span style="color:#888;font-size:0.85em">Conta: Bradesco C/C 237-2 • Período: 01/06 a 16/06/2026</span>
+</div>
+
+<!-- RESUMO -->
+<div class="summary-bar">
+  <div class="summary-card green"><div class="num" id="cntConfirmed">0</div><div class="label">✅ Confirmados</div></div>
+  <div class="summary-card yellow"><div class="num" id="cntPending">8</div><div class="label">⏳ Pendentes</div></div>
+  <div class="summary-card red"><div class="num" id="cntSkipped">0</div><div class="label">✗ Pulados</div></div>
+  <div class="summary-card blue"><div class="num">3</div><div class="label">📋 Sem match ERP</div></div>
+  <div class="summary-card gray"><div class="num">2</div><div class="label">🏦 Sem match Banco</div></div>
+  <div class="progress-wrap">
+    <div class="progress-label"><span>Progresso</span><span id="progressPct">0/8</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
+  </div>
+</div>
+
+<!-- MATCHES ENCONTRADOS -->
+<div class="matches-section" id="matchesSection">
+  <h2>
+    🔗 Matches Encontrados pelo Sistema
+    <span class="toggle-all" onclick="toggleAllMatches()">📋 Expandir todos</span>
+  </h2>
+
+  <!-- Match 1 -->
+  <div class="match-card" id="match1">
+    <div class="match-inner">
+      <div class="confidence high">98%</div>
+      <div class="match-icon">🟢</div>
+      <div class="match-details">
+        <div class="match-row">
+          <span class="side-label erp">ERP</span>
+          <span class="match-desc">Fornecedor Ambev — NF 45231</span>
+          <span class="match-date">05/06</span>
+          <span class="match-valor neg">-R$ 15.000,00</span>
+        </div>
+        <div class="match-row" style="padding-left:16px;color:#aaa;">↕</div>
+        <div class="match-row">
+          <span class="side-label banco">BANCO</span>
+          <span class="match-desc">TED — AMBEV CERV</span>
+          <span class="match-date">05/06</span>
+          <span class="match-valor neg">-R$ 15.000,00</span>
+        </div>
+        <div class="match-reason">
+          <span class="true">✓ Mesmo valor</span>
+          <span class="true">✓ Mesmo dia</span>
+          <span class="true">✓ Nome compatível (AMBEV)</span>
+          <span class="true">✓ CNPJ confere</span>
+        </div>
+      </div>
+      <div class="match-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmMatch('match1')">✓ Confirmar</button>
+        <button class="btn-sm btn-skip" onclick="skipMatch('match1')">✗ Pular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match 2 -->
+  <div class="match-card" id="match2">
+    <div class="match-inner">
+      <div class="confidence medium">75%</div>
+      <div class="match-icon">🟡</div>
+      <div class="match-details">
+        <div class="match-row">
+          <span class="side-label erp">ERP</span>
+          <span class="match-desc">Aluguel — Imobiliária Central</span>
+          <span class="match-date">08/06</span>
+          <span class="match-valor neg">-R$ 3.200,50</span>
+        </div>
+        <div class="match-row" style="padding-left:16px;color:#aaa;">↕</div>
+        <div class="match-row">
+          <span class="side-label banco">BANCO</span>
+          <span class="match-desc">PIX — IMOBILIARIA CENTRAL LTDA</span>
+          <span class="match-date">08/06</span>
+          <span class="match-valor neg">-R$ 3.200,50</span>
+        </div>
+        <div class="match-reason">
+          <span class="true">✓ Mesmo valor</span>
+          <span class="true">✓ Mesmo dia</span>
+          <span class="true">✓ Nome compatível (Imobiliária)</span>
+          <span class="false">✗ CNPJ não confere</span>
+        </div>
+      </div>
+      <div class="match-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmMatch('match2')">✓ Confirmar</button>
+        <button class="btn-sm btn-skip" onclick="skipMatch('match2')">✗ Pular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match 3 -->
+  <div class="match-card" id="match3">
+    <div class="match-inner">
+      <div class="confidence high">95%</div>
+      <div class="match-icon">🟢</div>
+      <div class="match-details">
+        <div class="match-row">
+          <span class="side-label erp">ERP</span>
+          <span class="match-desc">Fornecedor JBS — NF 98102</span>
+          <span class="match-date">12/06</span>
+          <span class="match-valor neg">-R$ 12.500,00</span>
+        </div>
+        <div class="match-row" style="padding-left:16px;color:#aaa;">↕</div>
+        <div class="match-row">
+          <span class="side-label banco">BANCO</span>
+          <span class="match-desc">TED — JBS FRIGORIFICOS</span>
+          <span class="match-date">12/06</span>
+          <span class="match-valor neg">-R$ 12.500,00</span>
+        </div>
+        <div class="match-reason">
+          <span class="true">✓ Mesmo valor</span>
+          <span class="true">✓ Mesmo dia</span>
+          <span class="true">✓ Nome compatível (JBS)</span>
+          <span class="true">✓ CNPJ confere</span>
+        </div>
+      </div>
+      <div class="match-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmMatch('match3')">✓ Confirmar</button>
+        <button class="btn-sm btn-skip" onclick="skipMatch('match3')">✗ Pular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match 4 -->
+  <div class="match-card" id="match4">
+    <div class="match-inner">
+      <div class="confidence low">55%</div>
+      <div class="match-icon">🔴</div>
+      <div class="match-details">
+        <div class="match-row">
+          <span class="side-label erp">ERP</span>
+          <span class="match-desc">Tarifa Bancária — Pacote de Serviços</span>
+          <span class="match-date">15/06</span>
+          <span class="match-valor neg">-R$ 450,90</span>
+        </div>
+        <div class="match-row" style="padding-left:16px;color:#aaa;">↕</div>
+        <div class="match-row">
+          <span class="side-label banco">BANCO</span>
+          <span class="match-desc">TARIFA BANCARIA — COBRANÇA</span>
+          <span class="match-date">14/06</span>
+          <span class="match-valor neg">-R$ 199,90</span>
+        </div>
+        <div class="match-reason">
+          <span class="false">✗ Valores diferentes</span>
+          <span class="false">✗ Datas diferentes</span>
+          <span class="true">✓ Nome compatível (Tarifa)</span>
+        </div>
+      </div>
+      <div class="match-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmMatch('match4')">✓ Confirmar</button>
+        <button class="btn-sm btn-skip" onclick="skipMatch('match4')">✗ Pular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match 5 -->
+  <div class="match-card" id="match5">
+    <div class="match-inner">
+      <div class="confidence medium">78%</div>
+      <div class="match-icon">🟡</div>
+      <div class="match-details">
+        <div class="match-row">
+          <span class="side-label erp">ERP</span>
+          <span class="match-desc">Cliente Supermercado Legal — Venda 5821</span>
+          <span class="match-date">10/06</span>
+          <span class="match-valor pos">+R$ 8.750,00</span>
+        </div>
+        <div class="match-row" style="padding-left:16px;color:#aaa;">↕</div>
+        <div class="match-row">
+          <span class="side-label banco">BANCO</span>
+          <span class="match-desc">DEPÓSITO — SUPERMERCADO LEGAL</span>
+          <span class="match-date">11/06</span>
+          <span class="match-valor pos">+R$ 8.700,00</span>
+        </div>
+        <div class="match-reason">
+          <span class="false">✗ Valores diferentes (dif. R$ 50)</span>
+          <span class="false">✗ Datas diferentes (1 dia)</span>
+          <span class="true">✓ Nome compatível (Supermercado)</span>
+        </div>
+      </div>
+      <div class="match-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmMatch('match5')">✓ Confirmar</button>
+        <button class="btn-sm btn-skip" onclick="skipMatch('match5')">✗ Pular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match 6 -->
+  <div class="match-card" id="match6">
+    <div class="match-inner">
+      <div class="confidence high">92%</div>
+      <div class="match-icon">🟢</div>
+      <div class="match-details">
+        <div class="match-row">
+          <span class="side-label erp">ERP</span>
+          <span class="match-desc">Energia Elétrica — CPFL</span>
+          <span class="match-date">14/06</span>
+          <span class="match-valor neg">-R$ 1.890,00</span>
+        </div>
+        <div class="match-row" style="padding-left:16px;color:#aaa;">↕</div>
+        <div class="match-row">
+          <span class="side-label banco">BANCO</span>
+          <span class="match-desc">DEBITO AUTOMATICO — ENERGIA</span>
+          <span class="match-date">14/06</span>
+          <span class="match-valor neg">-R$ 1.890,00</span>
+        </div>
+        <div class="match-reason">
+          <span class="true">✓ Mesmo valor</span>
+          <span class="true">✓ Mesmo dia</span>
+          <span class="true">✓ Débito automático (tipo compatível)</span>
+        </div>
+      </div>
+      <div class="match-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmMatch('match6')">✓ Confirmar</button>
+        <button class="btn-sm btn-skip" onclick="skipMatch('match6')">✗ Pular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match 7 -->
+  <div class="match-card" id="match7">
+    <div class="match-inner">
+      <div class="confidence high">97%</div>
+      <div class="match-icon">🟢</div>
+      <div class="match-details">
+        <div class="match-row">
+          <span class="side-label erp">ERP</span>
+          <span class="match-desc">Fornecedor Pepsico — NF 67234</span>
+          <span class="match-date">15/06</span>
+          <span class="match-valor neg">-R$ 4.600,00</span>
+        </div>
+        <div class="match-row" style="padding-left:16px;color:#aaa;">↕</div>
+        <div class="match-row">
+          <span class="side-label banco">BANCO</span>
+          <span class="match-desc">TED — FORNECEDOR PEPSICO</span>
+          <span class="match-date">15/06</span>
+          <span class="match-valor neg">-R$ 4.600,00</span>
+        </div>
+        <div class="match-reason">
+          <span class="true">✓ Mesmo valor</span>
+          <span class="true">✓ Mesmo dia</span>
+          <span class="true">✓ Nome compatível (Pepsico)</span>
+          <span class="true">✓ CNPJ confere</span>
+        </div>
+      </div>
+      <div class="match-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmMatch('match7')">✓ Confirmar</button>
+        <button class="btn-sm btn-skip" onclick="skipMatch('match7')">✗ Pular</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match 8 -->
+  <div class="match-card" id="match8">
+    <div class="match-inner">
+      <div class="confidence medium">70%</div>
+      <div class="match-icon">🟡</div>
+      <div class="match-details">
+        <div class="match-row">
+          <span class="side-label erp">ERP</span>
+          <span class="match-desc">Distribuidora ABC — NF 33421</span>
+          <span class="match-date">16/06</span>
+          <span class="match-valor pos">+R$ 2.340,00</span>
+        </div>
+        <div class="match-row" style="padding-left:16px;color:#aaa;">↕</div>
+        <div class="match-row">
+          <span class="side-label banco">BANCO</span>
+          <span class="match-desc">PIX RECEBIDO — DISTRIBUIDORA ABC</span>
+          <span class="match-date">16/06</span>
+          <span class="match-valor pos">+R$ 2.340,00</span>
+        </div>
+        <div class="match-reason">
+          <span class="true">✓ Mesmo valor</span>
+          <span class="true">✓ Mesmo dia</span>
+          <span class="true">✓ Nome compatível (ABC)</span>
+          <span class="false">✗ CNPJ não confere</span>
+        </div>
+      </div>
+      <div class="match-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmMatch('match8')">✓ Confirmar</button>
+        <button class="btn-sm btn-skip" onclick="skipMatch('match8')">✗ Pular</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NÃO ENCONTRADOS -->
+<div class="unmatched-section">
+  <h2>⚠️ Lançamentos sem Match Automático</h2>
+  <div class="unmatched-grid">
+    <div class="unmatched-col">
+      <h3>📋 ERP (3 pendentes)</h3>
+      <div class="unmatched-item">
+        <span>10/06 — Material Limpeza</span>
+        <span class="val debit">-R$ 185,30</span>
+      </div>
+      <div class="unmatched-item">
+        <span>13/06 — Restituição ICMS</span>
+        <span class="val credit">+R$ 1.420,00</span>
+      </div>
+      <div class="unmatched-item">
+        <span>16/06 — Correios</span>
+        <span class="val debit">-R$ 72,15</span>
+      </div>
+    </div>
+    <div class="unmatched-col">
+      <h3>🏦 Banco (2 pendentes)</h3>
+      <div class="unmatched-item">
+        <span>07/06 — DEP CLIENTE VAREJAO XYZ</span>
+        <span class="val credit">+R$ 2.500,00</span>
+      </div>
+      <div class="unmatched-item">
+        <span>13/06 — PIX RECEBIDO MARIA SILVA</span>
+        <span class="val credit">+R$ 320,00</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AÇÕES -->
+<div class="actions">
+  <div class="stats">
+    <strong id="confirmedCount">0</strong> de <strong>8</strong> matches confirmados
+  </div>
+  <div class="buttons">
+    <button class="btn btn-danger" onclick="skipAll()">🗑 Pular todos</button>
+    <button class="btn btn-outline" onclick="irParaManual()">🔍 Ir para Conciliação Manual</button>
+    <button class="btn btn-success" id="btnFinalizar" onclick="finalizar()">✅ Confirmar Todos e Finalizar</button>
+  </div>
+</div>
+
+<script>
+let confirmed = 0;
+let skipped = 0;
+const total = 8;
+
+function confirmMatch(id) {
+  const card = document.getElementById(id);
+  card.classList.add('confirmed');
+  confirmed++;
+  updateCounters();
+}
+
+function skipMatch(id) {
+  const card = document.getElementById(id);
+  card.classList.add('skipped');
+  skipped++;
+  updateCounters();
+}
+
+function updateCounters() {
+  const pending = total - confirmed - skipped;
+  document.getElementById('cntConfirmed').textContent = confirmed;
+  document.getElementById('cntPending').textContent = pending;
+  document.getElementById('cntSkipped').textContent = skipped;
+  document.getElementById('confirmedCount').textContent = confirmed;
+  document.getElementById('progressPct').textContent = (confirmed + skipped) + '/' + total;
+  document.getElementById('progressFill').style.width = ((confirmed + skipped) / total * 100) + '%';
+
+  if (pending === 0) {
+    document.getElementById('btnFinalizar').textContent = '✅ ' + confirmed + ' confirmados — Finalizar Conciliação';
+  }
+}
+
+function skipAll() {
+  if (confirm('Pular TODOS os 8 matches sugeridos? Você poderá fazer a conciliação manual depois.')) {
+    for (let i = 1; i <= 8; i++) {
+      const card = document.getElementById('match' + i);
+      if (!card.classList.contains('confirmed') && !card.classList.contains('skipped')) {
+        card.classList.add('skipped');
+        skipped++;
+      }
+    }
+    updateCounters();
+  }
+}
+
+function irParaManual() {
+  alert('➡ Indo para Conciliação Manual lado a lado...');
+}
+
+function finalizar() {
+  if (confirmed === 0 && !confirm('Nenhum match foi confirmado. Deseja finalizar assim mesmo?')) return;
+  alert(
+    '✅ Conciliação concluída!\n\n' +
+    confirmed + ' matches confirmados\n' +
+    skipped + ' matches pulados\n' +
+    '5 lançamentos ficarão pendentes para conciliação manual'
+  );
+}
+
+function toggleAllMatches() {
+  // Visual only - expand/collapse cards
+  const cards = document.querySelectorAll('.match-card:not(.confirmed):not(.skipped)');
+  const allVisible = [...cards].every(c => c.style.display !== 'none');
+  cards.forEach(c => { c.style.display = allVisible ? 'none' : ''; });
+  document.querySelector('.toggle-all').textContent = allVisible ? '📋 Expandir todos' : '📋 Recolher todos';
+}
+
+updateCounters();
+</script>
+
+</body>
+</html>
