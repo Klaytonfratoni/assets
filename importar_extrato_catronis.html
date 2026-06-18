@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Importar Extrato Bancário — Catronis ERP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f5f6fa;
+    color: #2d3436;
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  /* ====== PASSO A PASSO ====== */
+  .steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .step {
+    flex: 1;
+    text-align: center;
+    padding: 14px 10px;
+    font-size: 0.85em;
+    color: #999;
+    position: relative;
+    background: #fafafa;
+    font-weight: 500;
+  }
+  .step.active {
+    background: #e8f0fe;
+    color: #20455B;
+    font-weight: 700;
+  }
+  .step.done {
+    background: #e6f4ea;
+    color: #1e7e34;
+  }
+  .step::after {
+    content: '';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 10px solid #fafafa;
+    z-index: 1;
+  }
+  .step.active::after { border-left-color: #e8f0fe; }
+  .step.done::after { border-left-color: #e6f4ea; }
+  .step:last-child::after { display: none; }
+
+  /* ====== CABEÇALHO ====== */
+  .header {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .header h1 { font-size: 1.4em; color: #20455B; margin-right: auto; }
+  .header select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9em;
+    background: #fff;
+    min-width: 260px;
+  }
+
+  /* ====== ÁREA DE UPLOAD ====== */
+  .upload-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 0;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .upload-section h2 {
+    padding: 14px 20px;
+    background: #f8f9fa;
+    font-size: 1em;
+    color: #555;
+    border-bottom: 1px solid #eee;
+  }
+  .upload-area {
+    margin: 24px;
+    border: 2px dashed #ccc;
+    border-radius: 12px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fafbfc;
+  }
+  .upload-area:hover { border-color: #29B6F6; background: #f0f8ff; }
+  .upload-area.drag-over { border-color: #1e7e34; background: #e6f4ea; }
+  .upload-area.has-file { border-color: #1e7e34; background: #e6f4ea; border-style: solid; }
+  .upload-icon { font-size: 3em; margin-bottom: 10px; }
+  .upload-text { font-size: 1.05em; color: #555; margin-bottom: 5px; }
+  .upload-hint { font-size: 0.82em; color: #999; }
+  .file-info {
+    display: none;
+    margin: 0 24px 20px 24px;
+    padding: 12px 16px;
+    background: #e6f4ea;
+    border-radius: 8px;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9em;
+  }
+  .file-info.show { display: flex; }
+  .file-info .name { font-weight: 600; color: #1e7e34; }
+  .file-info .size { color: #666; font-size: 0.85em; }
+  .file-info .remove { margin-left: auto; color: #c0392b; cursor: pointer; font-weight: 700; }
+
+  /* ====== TABELA DE PRÉ-VISUALIZAÇÃO ====== */
+  .preview-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 0;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .preview-section h2 {
+    padding: 14px 20px;
+    background: #f8f9fa;
+    font-size: 1em;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .badge-count {
+    background: #20455B;
+    color: white;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+  }
+  .toolbar {
+    padding: 12px 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #eee;
+  }
+  .toolbar input {
+    padding: 7px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.85em;
+    width: 240px;
+  }
+  .toolbar label { font-size: 0.8em; color: #888; }
+  .toolbar .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.78em;
+    cursor: pointer;
+    border: 1px solid #ddd;
+    background: #fff;
+  }
+  .chip.active { background: #20455B; color: white; border-color: #20455B; }
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+  table th {
+    background: #f8f9fa;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 2px solid #eee;
+    white-space: nowrap;
+  }
+  table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  table tbody tr:hover td { background: #f8f9ff; }
+  table tbody tr.erp-exists td { background: #fffbe6; }
+  table tbody tr.erp-exists td:first-child { border-left: 3px solid #f0b400; }
+  .credit { color: #1e7e34; font-weight: 600; }
+  .debit  { color: #c0392b; font-weight: 600; }
+  .match-icon { font-size: 0.85em; }
+  .badge-novo {
+    background: #e8f0fe;
+    color: #20455B;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 600;
+  }
+  .badge-existe {
+    background: #fff3cd;
+    color: #856404;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 600;
+  }
+  .badge-duplicado {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: 600;
+  }
+
+  /* ====== BARRA DE AÇÕES ====== */
+  .actions {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .actions .stats { font-size: 0.9em; color: #666; }
+  .actions .stats strong { color: #20455B; }
+  .actions .buttons { display: flex; gap: 10px; }
+  .btn {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9em;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: #20455B; color: white; }
+  .btn-primary:hover { background: #1a3748; }
+  .btn-success { background: #1e7e34; color: white; }
+  .btn-success:hover { background: #166b2a; }
+  .btn-outline { background: #fff; color: #20455B; border: 2px solid #20455B; }
+  .btn-outline:hover { background: #f0f4f8; }
+  .btn:disabled { background: #ccc; color: #999; cursor: not-allowed; border-color: #ccc; }
+
+  /* ====== TOAST ====== */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #20455B;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- PASSO A PASSO -->
+<div class="steps">
+  <div class="step done">1. Selecionar Conta</div>
+  <div class="step active">2. Importar Extrato</div>
+  <div class="step">3. Revisar Lançamentos</div>
+  <div class="step">4. Conciliação</div>
+</div>
+
+<!-- CABEÇALHO -->
+<div class="header">
+  <h1>📥 Importar Extrato Bancário</h1>
+  <label style="font-size:0.85em;color:#666;font-weight:600">Conta corrente:</label>
+  <select>
+    <option>Bradesco — C/C 237-2 (Principal)</option>
+    <option>Itaú — C/C 341-5</option>
+    <option>Santander — C/C 033-8</option>
+  </select>
+</div>
+
+<!-- ÁREA DE UPLOAD -->
+<div class="upload-section">
+  <h2>📎 Arquivo do Extrato</h2>
+
+  <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📄</div>
+    <div class="upload-text">Clique para selecionar ou arraste o arquivo aqui</div>
+    <div class="upload-hint">Formatos aceitos: OFX, CSV, XLSX • Tamanho máximo: 10 MB</div>
+    <input type="file" id="fileInput" accept=".ofx,.csv,.xlsx" style="display:none" onchange="handleFile(this.files[0])">
+  </div>
+
+  <div class="file-info" id="fileInfo">
+    <span>📄</span>
+    <span class="name" id="fileName"></span>
+    <span class="size" id="fileSize"></span>
+    <span class="remove" onclick="removeFile()">✕ Remover</span>
+  </div>
+</div>
+
+<!-- PRÉ-VISUALIZAÇÃO -->
+<div class="preview-section" id="previewSection">
+  <h2>
+    🔍 Lançamentos Importados
+    <span class="badge-count" id="totalCount">12</span>
+  </h2>
+  <div class="toolbar">
+    <input type="text" placeholder="🔎 Filtrar por descrição ou valor..." oninput="filterTable(this)">
+    <label>Exibir:</label>
+    <div class="chips">
+      <span class="chip active" onclick="filterByType(this, 'todos')">Todos (12)</span>
+      <span class="chip" onclick="filterByType(this, 'novo')">🆕 Novos (9)</span>
+      <span class="chip" onclick="filterByType(this, 'existe')">⚠️ Já no ERP (3)</span>
+      <span class="chip" onclick="filterByType(this, 'duplicado')">🗑 Duplicados (0)</span>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Descrição</th>
+          <th>Documento</th>
+          <th>Tipo</th>
+          <th style="text-align:right">Valor (R$)</th>
+          <th>Situação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>01/06</td>
+          <td>SALDO ANTERIOR</td>
+          <td>—</td>
+          <td>Crédito</td>
+          <td class="credit" style="text-align:right">+45.230,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+        <tr>
+          <td>03/06</td>
+          <td>TED — FORNECEDOR AMBEV</td>
+          <td>DOC-45231</td>
+          <td>Débito</td>
+          <td class="debit" style="text-align:right">-15.000,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+        <tr class="erp-exists">
+          <td>05/06</td>
+          <td>PIX — IMOBILIARIA CENTRAL LTDA</td>
+          <td>PIX-88921</td>
+          <td>Débito</td>
+          <td class="debit" style="text-align:right">-3.200,50</td>
+          <td><span class="badge-existe">Já no ERP</span></td>
+        </tr>
+        <tr>
+          <td>07/06</td>
+          <td>DEPÓSITO — CLIENTE VAREJAO XYZ</td>
+          <td>DEP-10234</td>
+          <td>Crédito</td>
+          <td class="credit" style="text-align:right">+2.500,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+        <tr>
+          <td>08/06</td>
+          <td>TRANSFERÊNCIA — CONTA POUPANÇA</td>
+          <td>TED-55620</td>
+          <td>Crédito</td>
+          <td class="credit" style="text-align:right">+1.200,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+        <tr class="erp-exists">
+          <td>10/06</td>
+          <td>TARIFA BANCARIA — PACOTE SERVIÇOS</td>
+          <td>TAR-33451</td>
+          <td>Débito</td>
+          <td class="debit" style="text-align:right">-450,90</td>
+          <td><span class="badge-existe">Já no ERP</span></td>
+        </tr>
+        <tr>
+          <td>11/06</td>
+          <td>TED — JBS FRIGORIFICOS</td>
+          <td>DOC-98102</td>
+          <td>Débito</td>
+          <td class="debit" style="text-align:right">-12.500,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+        <tr>
+          <td>12/06</td>
+          <td>DEPÓSITO — SUPERMERCADO LEGAL</td>
+          <td>DEP-10456</td>
+          <td>Crédito</td>
+          <td class="credit" style="text-align:right">+8.700,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+        <tr>
+          <td>13/06</td>
+          <td>PIX RECEBIDO — DISTRIBUIDORA ABC</td>
+          <td>PIX-99872</td>
+          <td>Crédito</td>
+          <td class="credit" style="text-align:right">+2.340,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+        <tr>
+          <td>14/06</td>
+          <td>DEBITO AUTOMATICO — ENERGIA</td>
+          <td>DEB-77821</td>
+          <td>Débito</td>
+          <td class="debit" style="text-align:right">-1.890,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+        <tr class="erp-exists">
+          <td>15/06</td>
+          <td>TED — FORNECEDOR PEPSICO</td>
+          <td>DOC-67234</td>
+          <td>Débito</td>
+          <td class="debit" style="text-align:right">-4.600,00</td>
+          <td><span class="badge-existe">Já no ERP</span></td>
+        </tr>
+        <tr>
+          <td>16/06</td>
+          <td>PIX RECEBIDO — CLIENTE MARIA SILVA</td>
+          <td>PIX-10023</td>
+          <td>Crédito</td>
+          <td class="credit" style="text-align:right">+320,00</td>
+          <td><span class="badge-novo">Novo</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- BARRA DE AÇÕES -->
+<div class="actions">
+  <div class="stats">
+    <strong>12</strong> lançamentos importados ·
+    <strong style="color:#1e7e34">9 novos</strong> ·
+    <strong style="color:#856404">3 já no ERP</strong> ·
+    <strong style="color:#c0392b">0 duplicados</strong>
+  </div>
+  <div class="buttons">
+    <button class="btn btn-outline" onclick="resetAll()">↺ Importar outro arquivo</button>
+    <button class="btn btn-primary" onclick="showToast('✅ Lançamentos salvos com sucesso!')">💾 Salvar Lançamentos</button>
+    <button class="btn btn-success" onclick="goToConciliacao()">➡ Prosseguir para Conciliação</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== UPLOAD (SIMULADO) ======
+const uploadArea = document.getElementById('uploadArea');
+const fileInfo = document.getElementById('fileInfo');
+const fileInput = document.getElementById('fileInput');
+
+['dragenter', 'dragover'].forEach(evt => {
+  uploadArea.addEventListener(evt, e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+});
+['dragleave', 'drop'].forEach(evt => {
+  uploadArea.addEventListener(evt, e => { e.preventDefault(); uploadArea.classList.remove('drag-over'); });
+});
+uploadArea.addEventListener('drop', e => {
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = formatSize(file.size);
+  fileInfo.classList.add('show');
+  uploadArea.classList.add('has-file');
+  uploadArea.querySelector('.upload-text').textContent = '✅ Arquivo carregado!';
+  uploadArea.querySelector('.upload-hint').textContent = 'Clique para trocar o arquivo';
+  showToast('📄 ' + file.name + ' importado com sucesso!');
+}
+
+function removeFile() {
+  fileInfo.classList.remove('show');
+  uploadArea.classList.remove('has-file');
+  uploadArea.querySelector('.upload-text').textContent = 'Clique para selecionar ou arraste o arquivo aqui';
+  uploadArea.querySelector('.upload-hint').textContent = 'Formatos aceitos: OFX, CSV, XLSX • Tamanho máximo: 10 MB';
+  fileInput.value = '';
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+// ====== FILTROS ======
+function filterTable(input) {
+  const filter = input.value.toLowerCase();
+  const rows = document.querySelectorAll('#dataTable tbody tr');
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+  });
+}
+
+function filterByType(chip, type) {
+  document.querySelectorAll('.chips .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  const rows = document.querySelectorAll('#dataTable tbody tr');
+  rows.forEach(row => {
+    if (type === 'todos') { row.style.display = ''; return; }
+    if (type === 'novo' && row.querySelector('.badge-novo')) { row.style.display = ''; return; }
+    if (type === 'existe' && row.querySelector('.badge-existe')) { row.style.display = ''; return; }
+    if (type === 'duplicado' && row.querySelector('.badge-duplicado')) { row.style.display = ''; return; }
+    row.style.display = 'none';
+  });
+}
+
+// ====== AÇÕES ======
+function goToConciliacao() {
+  if (confirm('Deseja prosseguir para a tela de Conciliação com estes 12 lançamentos?')) {
+    showToast('➡ Indo para Conciliação Bancária...');
+  }
+}
+
+function resetAll() {
+  if (confirm('Tem certeza que deseja importar outro arquivo? Os dados atuais serão perdidos.')) {
+    removeFile();
+  }
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+</script>
+
+</body>
+</html>
